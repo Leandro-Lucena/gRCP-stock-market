@@ -21,4 +21,21 @@ public class StockPriceService(ILogger<StockPriceService> logger) : StockPrice.S
         
         return Task.FromResult(response);
     }
+
+    public override async Task GetStockPriceServerStreaming(StockRequest request, IServerStreamWriter<StockResponse> responseStream, ServerCallContext context)
+    {
+        const int max = 5;
+        var iterations = 0;
+        var deadline = context.Deadline.AddSeconds(-3);
+        if (deadline < DateTime.UtcNow)
+        {
+            throw new RpcException(Status.DefaultCancelled, "Deadline time error!");
+        }
+        while (!context.CancellationToken.IsCancellationRequested && iterations < max && DateTime.UtcNow < deadline)
+        {
+            await responseStream.WriteAsync(await GetStockPrice(request, context));
+            await Task.Delay(2000);
+            iterations++;
+        }
+    }
 }
