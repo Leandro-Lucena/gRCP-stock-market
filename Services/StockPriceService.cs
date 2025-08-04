@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Grpc.Core;
 using StockMarket.Protos;
 
@@ -37,5 +38,27 @@ public class StockPriceService(ILogger<StockPriceService> logger) : StockPrice.S
             await Task.Delay(2000);
             iterations++;
         }
+    }
+
+    public override async Task<UpdateStockPriceBatchResponse> UpdateStockPriceClientStreaming(IAsyncStreamReader<UpdateStockPriceRequest> requestStream, ServerCallContext context)
+    {
+        var prices = new List<string>();
+        const int batchSize = 2;
+        var count = 0;
+        while (await requestStream.MoveNext(context.CancellationToken))
+        {
+            var stock = requestStream.Current;
+            logger.LogInformation("New price for {action}: $ {price}", stock.Symbol, stock.Price);
+            prices.Add(JsonSerializer.Serialize(stock));
+            count++;
+            if (count % batchSize == 0)
+            {
+                logger.LogInformation("Saving batch.");
+                await File.AppendAllLinesAsync("stockprices.txt", prices, context.CancellationToken);
+                prices.Clear();
+            }
+        }
+        await File.AppendAllLinesAsync("stockprices.txt", prices, context.CancellationToken);
+        return new UpdateStockPriceBatchResponse {Message = $"{count} actions done."};
     }
 }
