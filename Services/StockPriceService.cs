@@ -61,4 +61,13 @@ public class StockPriceService(ILogger<StockPriceService> logger) : StockPrice.S
         await File.AppendAllLinesAsync("stockprices.txt", prices, context.CancellationToken);
         return new UpdateStockPriceBatchResponse {Message = $"{count} actions done."};
     }
+
+    public override async Task GetStockPriceBidirectionalStreaming(IAsyncStreamReader<StockRequest> requestStream,
+        IServerStreamWriter<StockResponse> responseStream, ServerCallContext context)
+    {
+        while (await requestStream.MoveNext(context.CancellationToken))
+        {
+            await responseStream.WriteAsync(await GetStockPrice(requestStream.Current, context));
+        }
+    }
 }
