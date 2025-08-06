@@ -1,9 +1,15 @@
+using StockMarket.Interceptors;
 using StockMarket.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options =>
+{
+    options.Interceptors.Add<AuthenticationInterceptor>();
+    options.Interceptors.Add<LoggingInterceptor>();
+    options.Interceptors.Add<AddTraceIdInterceptor>();
+});
 
 var app = builder.Build();
 
